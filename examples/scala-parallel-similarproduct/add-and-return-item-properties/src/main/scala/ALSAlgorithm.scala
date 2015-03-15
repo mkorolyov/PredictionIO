@@ -72,7 +72,7 @@ class ALSAlgorithm(val ap: ALSAlgorithmParams)
 
   @transient lazy val logger = Logger[this.type]
 
-  def train(data: PreparedData): ALSModel = {
+  def train(sc: SparkContext, data: PreparedData): ALSModel = {
     require(!data.viewEvents.take(1).isEmpty,
       s"viewEvents in PreparedData cannot be empty." +
       " Please check if DataSource generates TrainingData" +
@@ -117,6 +117,7 @@ class ALSAlgorithm(val ap: ALSAlgorithmParams)
         // MLlibRating requires integer index for user and item
         MLlibRating(u, i, v)
       }
+      .cache()
 
     // MLLib ALS cannot handle empty training data.
     require(!mllibRatings.take(1).isEmpty,

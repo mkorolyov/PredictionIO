@@ -7,20 +7,20 @@ title: Installing PredictionIO on Linux / Mac OS X
 NOTE: <span class="new">**Note:**</span> PredictionIO can now be installed with a single command:<br />
 `$ bash -c "$(curl -s https://install.prediction.io/install.sh)"`
 
-INFO: The install script will start Elasticsearch and HBase as background processes. If you restart your machine, you need to manually start ElasticSearch and HBase in order to use PredictionIO. Please see [Using PredictionIO FAQ](/resources/faq/#using-predictionio).
-
-The above script will complete the rest of the instructions on this page for you so you can skip them.
+The above script will complete the rest of the instructions on this page for you
+so you can skip them.
 
 ## Manual Install
 
-If you don't want to use the install script above, you can follow the steps below to setup PredictionIO and its dependencies.
+If you don't want to use the install script above, you can follow the steps
+below to setup PredictionIO and its dependencies.
 
 ### Download PredictionIO
 
 Simply download PredictionIO's binary distribution and extract it.
 
 ```
-$ wget http://download.prediction.io/PredictionIO-<%= data.versions.pio %>.tar.gz
+$ wget https://d8k1yxp8elc6b.cloudfront.net/PredictionIO-<%= data.versions.pio %>.tar.gz
 $ tar zxvf PredictionIO-<%= data.versions.pio %>.tar.gz
 $ cd PredictionIO-<%= data.versions.pio %>
 ```
@@ -51,14 +51,13 @@ SPARK_HOME=/home/abc/Downloads/<%= data.versions.spark_download_filename %>
 #### Elasticsearch Setup
 
 By default, PredictionIO uses Elasticsearch at localhost as the data store to
-store its metadata. Simply install and run
+store its metadata. Simply download and install
 [Elasticsearch](http://www.elasticsearch.org/), which looks like this:
 
 ```
 $ wget https://download.elasticsearch.org/elasticsearch/elasticsearch/<%= data.versions.elasticsearch_download_filename %>.tar.gz
 $ tar zxvf <%= data.versions.elasticsearch_download_filename %>.tar.gz
 $ cd <%= data.versions.elasticsearch_download_filename %>
-$ bin/elasticsearch
 ```
 
 If you are using a shared network, change the `network.host` line in
@@ -67,7 +66,8 @@ Elasticsearch looks for other machines on the network upon setup and you may run
 into weird errors if there are other machines that is also running
 Elasticsearch.
 
-If you are not using the default setting at localhost. You may change the following in ```conf/pio-env.sh``` to fit your setup.
+If you are not using the default setting at localhost. You may change the
+following in `conf/pio-env.sh` to fit your setup.
 
 ```
 PIO_STORAGE_SOURCES_ELASTICSEARCH_TYPE=elasticsearch
@@ -108,27 +108,16 @@ with your own home directory.
   </property>
 </configuration>
 ```
-Check the local.log file under the logs/ directory to make sure it's started correctly.
 
-Now you may start HBase.
-
-```
-$ bin/start-hbase.sh
-starting master, logging to /home/abc/<%= data.versions.hbase_basename %>-<%= data.versions.hbase_dir_suffix %>/bin/../logs/hbase-abc-master-yourhost.local.out
-```
-
-Note that even though the command returns immediately, you may have to wait for
-up to a minute before all the initialization is done. If you want to be
-absolutely safe, check your HBase log (replace `.out` from the filename shown
-after `bin/start-hbase.sh` with `.log`) and look for something similar to the
-following.
+Edit `conf/hbase-env.sh` to set `JAVA_HOME` for the cluster. For Mac users it
+would be
 
 ```
-2014-11-20 15:37:32,359 INFO  [M:0;10.0.27.242:52547] master.HMaster: Master has completed initialization
+export JAVA_HOME=`/usr/libexec/java_home -v 1.7`
 ```
 
-With this, you can confidently run the Event Server successfully.
+<%= partial 'shared/install/dependent_services' %>
 
-Now you have installed everything you need to run PredictionIO!
+Now you have installed everything you need!
 
 #### [Next: Recommendation Engine Quick Start](/templates/recommendation/quickstart/)

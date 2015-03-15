@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 TappingStone, Inc.
+# Copyright 2015 TappingStone, Inc.
 #
 # This script will install PredictionIO onto your computer!
 #
@@ -9,7 +9,7 @@
 # License: http://www.apache.org/licenses/LICENSE-2.0
 
 OS=`uname`
-PIO_VERSION=0.8.7-SNAPSHOT
+PIO_VERSION=0.9.1-SNAPSHOT
 SPARK_VERSION=1.2.0
 ELASTICSEARCH_VERSION=1.4.2
 HBASE_VERSION=0.98.6
@@ -221,9 +221,17 @@ echo "JAVA_HOME is now set to: $JAVA_HOME"
 # PredictionIO
 echo -e "\033[1;36mStarting PredictionIO setup in:\033[0m $pio_dir"
 cd $TEMP_DIR
+
+# delete existing tmp file before download again
+if [[ -e  $PIO_FILE ]]; then
+  if confirm "Delete existing $PIO_FILE?"; then
+    rm $PIO_FILE
+  fi
+fi
+
 if [[ ! -e $PIO_FILE ]]; then
   echo "Downloading PredictionIO..."
-  curl -O http://download.prediction.io/$PIO_FILE
+  curl -O https://d8k1yxp8elc6b.cloudfront.net/$PIO_FILE
 fi
 tar zxf $PIO_FILE
 rm -rf $pio_dir
@@ -243,6 +251,11 @@ mkdir $vendors_dir
 
 # Spark
 echo -e "\033[1;36mStarting Spark setup in:\033[0m $spark_dir"
+if [[ -e spark-$SPARK_VERSION-bin-hadoop2.4.tgz ]]; then
+  if confirm "Delete existing spark-$SPARK_VERSION-bin-hadoop2.4.tgz?"; then
+    rm spark-$SPARK_VERSION-bin-hadoop2.4.tgz
+  fi
+fi
 if [[ ! -e spark-$SPARK_VERSION-bin-hadoop2.4.tgz ]]; then
   echo "Downloading Spark..."
   curl -O http://d3kbcqa49mib13.cloudfront.net/spark-$SPARK_VERSION-bin-hadoop2.4.tgz
@@ -258,6 +271,11 @@ echo -e "\033[1;32mSpark setup done!\033[0m"
 
 # Elasticsearch
 echo -e "\033[1;36mStarting Elasticsearch setup in:\033[0m $elasticsearch_dir"
+if [[ -e elasticsearch-$ELASTICSEARCH_VERSION.tar.gz ]]; then
+  if confirm "Delete existing elasticsearch-$ELASTICSEARCH_VERSION.tar.gz?"; then
+    rm elasticsearch-$ELASTICSEARCH_VERSION.tar.gz
+  fi
+fi
 if [[ ! -e elasticsearch-$ELASTICSEARCH_VERSION.tar.gz ]]; then
   echo "Downloading Elasticsearch..."
   curl -O https://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-$ELASTICSEARCH_VERSION.tar.gz
@@ -269,10 +287,18 @@ mv elasticsearch-$ELASTICSEARCH_VERSION $elasticsearch_dir
 echo "Updating: $elasticsearch_dir/config/elasticsearch.yml"
 echo 'network.host: 127.0.0.1' >> $elasticsearch_dir/config/elasticsearch.yml
 
+echo "Updating: $pio_dir/conf/pio-env.sh"
+echo "PIO_STORAGE_SOURCES_ELASTICSEARCH_HOME=$elasticsearch_dir" >> $pio_dir/conf/pio-env.sh
+
 echo -e "\033[1;32mElasticsearch setup done!\033[0m"
 
 # HBase
 echo -e "\033[1;36mStarting HBase setup in:\033[0m $hbase_dir"
+if [[ -e hbase-$HBASE_VERSION-hadoop2-bin.tar.gz ]]; then
+  if confirm "Delete existing hbase-$HBASE_VERSION-hadoop2-bin.tar.gz?"; then
+    rm hbase-$HBASE_VERSION-hadoop2-bin.tar.gz
+  fi
+fi
 if [[ ! -e hbase-$HBASE_VERSION-hadoop2-bin.tar.gz ]]; then
   echo "Downloading HBase..."
   curl -O http://archive.apache.org/dist/hbase/hbase-$HBASE_VERSION/hbase-$HBASE_VERSION-hadoop2-bin.tar.gz
@@ -298,6 +324,10 @@ EOT
 echo "Updating: $hbase_dir/conf/hbase-env.sh to include $JAVA_HOME"
 $SED_CMD "s|# export JAVA_HOME=/usr/java/jdk1.6.0/|export JAVA_HOME=$JAVA_HOME|" $hbase_dir/conf/hbase-env.sh
 
+echo "Updating: $pio_dir/conf/pio-env.sh"
+echo "PIO_STORAGE_SOURCES_HBASE_HOME=$hbase_dir" >> $pio_dir/conf/pio-env.sh
+$SED_CMD "s|HBASE_CONF_DIR=\$PIO_HOME/conf|HBASE_CONF_DIR=$hbase_dir/conf|" $pio_dir/conf/pio-env.sh
+
 echo -e "\033[1;32mHBase setup done!\033[0m"
 
 echo "Updating permissions on: $vendors_dir"
@@ -314,9 +344,9 @@ echo -e "\033[1;32mInstallation done!\033[0m"
 
 echo "--------------------------------------------------------------------------------"
 echo -e "\033[1;32mInstallation of PredictionIO $PIO_VERSION complete!\033[0m"
-echo -e "\033[1;33mIMPORTANT: You still have to start the PredictionIO manually:\033[0m"
-echo -e "Run: '\033[1mpio start-all\033[0m'"
-echo -e "Check the status with: '\033pio status\033[0m'"
+echo -e "\033[1;33mIMPORTANT: You still have to start PredictionIO and dependencies manually:\033[0m"
+echo -e "Run: '\033[1mpio-start-all\033[0m'"
+echo -e "Check the status with: '\033[1mpio status\033[0m'"
 echo -e "Use: '\033[1mpio [train|deploy|...]\033[0m' commands"
 echo -e "Please report any problems to: \033[1;34msupport@prediction.io\033[0m"
 echo -e "\033[1;34mDocumentation at: http://docs.prediction.io\033[0m"

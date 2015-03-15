@@ -1,3 +1,18 @@
+/** Copyright 2015 TappingStone, Inc.
+  *
+  * Licensed under the Apache License, Version 2.0 (the "License");
+  * you may not use this file except in compliance with the License.
+  * You may obtain a copy of the License at
+  *
+  *     http://www.apache.org/licenses/LICENSE-2.0
+  *
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
+  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  * See the License for the specific language governing permissions and
+  * limitations under the License.
+  */
+
 package io.prediction.tools.console
 
 import io.prediction.controller.Utils
@@ -26,8 +41,7 @@ case class TemplateArgs(
   repository: String = "",
   name: Option[String] = None,
   packageName: Option[String] = None,
-  email: Option[String] = None,
-  indexUrl: String = "https://engines.prediction.io/engines.json")
+  email: Option[String] = None)
 
 case class GitHubTag(
   name: String,
@@ -130,7 +144,7 @@ object Template extends Logging {
     newReposCache
   }
 
-  def sub(repo: String, name: String, email: String, org: String) = {
+  def sub(repo: String, name: String, email: String, org: String): Unit = {
     val data = Map(
       "repo" -> repo,
       "name" -> name,
@@ -144,16 +158,12 @@ object Template extends Logging {
     }
   }
 
-  def meta(repo: String, name: String, org: String) = {
-    val data = Map(
-      "repo" -> repo,
-      "name" -> name,
-      "org" -> org)
+  def meta(repo: String, name: String, org: String): Unit = {
     try {
       httpOptionalProxy(
-        s"http://templates.prediction.io/$repo/$org/$name").asString
+        s"http://meta.prediction.io/templates/$repo/$org/$name").asString
     } catch {
-      case e: Throwable => warn("Template metadata unavailable.")
+      case e: Throwable => debug("Template metadata unavailable.")
     }
   }
 
@@ -309,8 +319,9 @@ object Template extends Logging {
           if (organization != "" &&
             (nameOnly.endsWith(".scala") ||
               nameOnly == "build.sbt" ||
-              nameOnly == "engine.json"))
+              nameOnly == "engine.json")) {
             filesToModify += destFilename
+          }
         }
         ze = zis.getNextEntry
       }

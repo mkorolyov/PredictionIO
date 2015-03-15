@@ -1,4 +1,4 @@
-/** Copyright 2014 TappingStone, Inc.
+/** Copyright 2015 TappingStone, Inc.
   *
   * Licensed under the Apache License, Version 2.0 (the "License");
   * you may not use this file except in compliance with the License.
@@ -75,6 +75,8 @@ case class CommonArgs(
   engineVersion: Option[String] = None,
   engineFactory: Option[String] = None,
   engineParamsKey: Option[String] = None,
+  evaluation: Option[String] = None,
+  engineParamsGenerator: Option[String] = None,
   variantJson: File = new File("engine.json"),
   manifestJson: File = new File("manifest.json"),
   stopAfterRead: Boolean = false,
@@ -100,7 +102,8 @@ case class DeployArgs(
 case class EventServerArgs(
   enabled: Boolean = false,
   ip: String = "localhost",
-  port: Int = 7070)
+  port: Int = 7070,
+  stats: Boolean = false)
 
 case class DashboardArgs(
   ip: String = "localhost",
@@ -116,7 +119,7 @@ case class UpgradeArgs(
 object Console extends Logging {
   def main(args: Array[String]): Unit = {
     val parser = new scopt.OptionParser[ConsoleArgs]("pio") {
-      override def showUsageOnError = false
+      override def showUsageOnError: Boolean = false
       head("PredictionIO Command Line Interface Console", BuildInfo.version)
       help("")
       note("Note that it is possible to supply pass-through arguments at\n" +
@@ -146,26 +149,29 @@ object Console extends Logging {
       opt[File]("variant") abbr("v") action { (x, c) =>
         c.copy(common = c.common.copy(variantJson = x))
       } validate { x =>
-        if (x.exists)
+        if (x.exists) {
           success
-        else
+        } else {
           failure(s"${x.getCanonicalPath} does not exist.")
+        }
       } text("Path to an engine variant JSON file. Default: engine.json")
       opt[File]("manifest") abbr("m") action { (x, c) =>
         c.copy(common = c.common.copy(manifestJson = x))
       } validate { x =>
-        if (x.exists)
+        if (x.exists) {
           success
-        else
+        } else {
           failure(s"${x.getCanonicalPath} does not exist.")
+        }
       } text("Path to an engine manifest JSON file. Default: manifest.json")
       opt[File]("sbt") action { (x, c) =>
         c.copy(build = c.build.copy(sbt = Some(x)))
       } validate { x =>
-        if (x.exists)
+        if (x.exists) {
           success
-        else
+        } else {
           failure(s"${x.getCanonicalPath} does not exist.")
+        }
       } text("Path to sbt. Default: sbt")
       opt[Unit]("verbose") action { (x, c) =>
         c.copy(common = c.common.copy(verbose = true))
@@ -261,19 +267,15 @@ object Console extends Logging {
         action { (_, c) =>
           c.copy(commands = c.commands :+ "eval")
         } children(
+          arg[String]("<evaluation-class>") action { (x, c) =>
+            c.copy(common = c.common.copy(evaluation = Some(x)))
+          },
+          arg[String]("<engine-parameters-generator-class>") action { (x, c) =>
+            c.copy(common = c.common.copy(engineParamsGenerator = Some(x)))
+          },
           opt[String]("batch") action { (x, c) =>
             c.copy(common = c.common.copy(batch = x))
-          } text("Batch label of the run."),
-          opt[String]("params-path") action { (x, c) =>
-            c.copy(paramsPath = x)
-          } text("Directory to lookup parameters JSON files. Default: params"),
-          opt[String]("metrics-class") required() action { (x, c) =>
-            c.copy(metricsClass = Some(x))
-          } text("Name of metrics class to run."),
-          opt[String]("metrics-params") abbr("mp") action { (x, c) =>
-            c.copy(metricsParamsJsonPath = Some(x))
-          } text("Metrics parameters JSON file. Will try to use\n" +
-            "        metrics.json in the base path.")
+          } text("Batch label of the run.")
         )
       note("")
       cmd("deploy").
@@ -354,7 +356,10 @@ object Console extends Logging {
           } text("IP to bind to. Default: localhost"),
           opt[Int]("port") action { (x, c) =>
             c.copy(eventServer = c.eventServer.copy(port = x))
-          } text("Port to bind to. Default: 7070")
+          } text("Port to bind to. Default: 7070"),
+          opt[Unit]("stats") action { (x, c) =>
+            c.copy(eventServer = c.eventServer.copy(stats = true))
+          }
         )
       note("")
       cmd("run").
@@ -514,9 +519,6 @@ object Console extends Logging {
               },
               opt[String]("email") action { (x, c) =>
                 c.copy(template = c.template.copy(email = Some(x)))
-              },
-              opt[String]("index-url") action { (x, c) =>
-                c.copy(template = c.template.copy(indexUrl = x))
               }
             ),
           cmd("list").
@@ -553,16 +555,17 @@ object Console extends Logging {
 
     val separatorIndex = args.indexWhere(_ == "--")
     val (consoleArgs, theRest) =
-      if (separatorIndex == -1)
+      if (separatorIndex == -1) {
         (args, Array[String]())
-      else
+      } else {
         args.splitAt(separatorIndex)
+      }
     val allPassThroughArgs = theRest.drop(1)
     val secondSepIdx = allPassThroughArgs.indexWhere(_ == "--")
     val (sparkPassThroughArgs, driverPassThroughArgs) =
-      if (secondSepIdx == -1)
+      if (secondSepIdx == -1) {
         (allPassThroughArgs, Array[String]())
-      else {
+      } else {
         val t = allPassThroughArgs.splitAt(secondSepIdx)
         (t._1, t._2.drop(1))
       }
@@ -643,7 +646,7 @@ object Console extends Logging {
     }
   }
 
-  def help(commands: Seq[String] = Seq()) = {
+  def help(commands: Seq[String] = Seq()): String = {
     if (commands.isEmpty) {
       mainHelp
     } else {
@@ -695,8 +698,9 @@ object Console extends Logging {
     val finalJarFiles = if (sys.env.contains("HADOOP_CONF_DIR") && !ca.build.uberJar) {
       info("Also copying PredictionIO core assembly.")
       jarFiles :+ coreAssembly(ca.common.pioHome.get)
-    } else
+    } else {
       jarFiles
+    }
     RegisterEngine.registerEngine(
       ca.common.manifestJson,
       finalJarFiles,
@@ -751,7 +755,7 @@ object Console extends Logging {
         engineInstances.getLatestCompleted(em.id, em.version, variantId)
       }
       engineInstance map { r =>
-        //undeploy(ca)
+        // undeploy(ca)
         RunServer.runServer(
           ca,
           coreAssembly(ca.common.pioHome.get),
@@ -783,7 +787,8 @@ object Console extends Logging {
       s"Creating Event Server at ${ca.eventServer.ip}:${ca.eventServer.port}")
     EventServer.createEventServer(EventServerConfig(
       ip = ca.eventServer.ip,
-      port = ca.eventServer.port))
+      port = ca.eventServer.port,
+      stats = ca.eventServer.stats))
   }
 
   def undeploy(ca: ConsoleArgs): Int = {
@@ -815,21 +820,34 @@ object Console extends Logging {
   }
 
   def compile(ca: ConsoleArgs): Unit = {
-    FileUtils.writeLines(
-      new File("pio.sbt"),
-      Seq(
-        "// Generated automatically by pio build.",
-        "// Changes in this file will be overridden.",
-        "",
-        "pioVersion := \"" + BuildInfo.version + "\""))
+    // only add pioVersion to sbt if project/pio.sbt exists
+    if (new File("project", "pio.sbt").exists) {
+      FileUtils.writeLines(
+        new File("pio.sbt"),
+        Seq(
+          "// Generated automatically by pio build.",
+          "// Changes in this file will be overridden.",
+          "",
+          "pioVersion := \"" + BuildInfo.version + "\""))
+    }
+    implicit val formats = Utils.json4sDefaultFormats
+    try {
+      val engineFactory =
+        (parse(Source.fromFile("engine.json").mkString) \ "engineFactory").
+          extract[String]
+      WorkflowUtils.checkUpgrade("build", engineFactory)
+    } catch {
+      case e: Throwable => WorkflowUtils.checkUpgrade("build")
+    }
     val sbt = detectSbt(ca)
     info(s"Using command '${sbt}' at the current working directory to build.")
     info("If the path above is incorrect, this process will fail.")
     val asm =
-      if (ca.build.sbtAssemblyPackageDependency)
+      if (ca.build.sbtAssemblyPackageDependency) {
         " assemblyPackageDependency"
-      else
+      } else {
         ""
+      }
     val clean = if (ca.build.sbtClean) " clean" else ""
     val buildCmd = s"${sbt} ${ca.build.sbtExtra.getOrElse("")}${clean} " +
       (if (ca.build.uberJar) "assembly" else s"package${asm}")
@@ -849,12 +867,13 @@ object Console extends Logging {
     info(s"Going to run: ${buildCmd}")
     try {
       val r =
-        if (ca.common.verbose)
-        buildCmd.!(ProcessLogger(line => info(line), line => error(line)))
-        else
-        buildCmd.!(ProcessLogger(
-          line => outputSbtError(line),
-          line => outputSbtError(line)))
+        if (ca.common.verbose) {
+          buildCmd.!(ProcessLogger(line => info(line), line => error(line)))
+        } else {
+          buildCmd.!(ProcessLogger(
+            line => outputSbtError(line),
+            line => outputSbtError(line)))
+        }
       if (r != 0) {
         error(s"Return code of previous step is ${r}. Aborting.")
         sys.exit(1)
@@ -880,8 +899,12 @@ object Console extends Logging {
     jarFiles foreach { f => info(s"Found JAR: ${f.getName}") }
     val allJarFiles = jarFiles.map(_.getCanonicalPath)
     val cmd = s"${getSparkHome(ca.common.sparkHome)}/bin/spark-submit --jars " +
-      s"${allJarFiles.mkString(",")} " + (if (extraFiles.size > 0)
-        s"--files ${extraFiles.mkString(",")} " else "") +
+      s"${allJarFiles.mkString(",")} " +
+      (if (extraFiles.size > 0) {
+        s"--files ${extraFiles.mkString(",")} "
+      } else {
+        ""
+      }) +
       "--class " +
       s"${ca.mainClass.get} ${ca.common.sparkPassThrough.mkString(" ")} " +
       coreAssembly(ca.common.pioHome.get) + " " +
@@ -972,10 +995,11 @@ object Console extends Logging {
   def coreAssembly(pioHome: String): File = {
     val core = s"pio-assembly-${BuildInfo.version}.jar"
     val coreDir =
-      if (new File(pioHome + File.separator + "RELEASE").exists)
+      if (new File(pioHome + File.separator + "RELEASE").exists) {
         new File(pioHome + File.separator + "lib")
-      else
+      } else {
         new File(pioHome + File.separator + "assembly")
+      }
     val coreFile = new File(coreDir, core)
     if (coreFile.exists) {
       coreFile
@@ -1079,7 +1103,7 @@ object Console extends Logging {
     if (targetFiles.size > 0) targetFiles else libFiles
   }
 
-  def jarFilesForScalaFilter(jars: Array[File]) =
+  def jarFilesForScalaFilter(jars: Array[File]): Array[File] =
     jars.filterNot { f =>
       f.getName.toLowerCase.endsWith("-javadoc.jar") ||
       f.getName.toLowerCase.endsWith("-sources.jar")

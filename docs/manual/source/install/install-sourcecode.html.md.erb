@@ -51,14 +51,13 @@ SPARK_HOME=/home/abc/Downloads/<%= data.versions.spark_download_filename %>
 #### Elasticsearch Setup
 
 By default, PredictionIO uses Elasticsearch at localhost as the data store to
-store its metadata. Simply install and run
+store its metadata. Simply download and install
 [Elasticsearch](http://www.elasticsearch.org/), which looks like this:
 
 ```
 $ wget https://download.elasticsearch.org/elasticsearch/elasticsearch/<%= data.versions.elasticsearch_download_filename %>.tar.gz
 $ tar zxvf <%= data.versions.elasticsearch_download_filename %>.tar.gz
 $ cd <%= data.versions.elasticsearch_download_filename %>
-$ bin/elasticsearch
 ```
 
 If you are using a shared network, change the `network.host` line in
@@ -109,33 +108,15 @@ with your own home directory.
 </configuration>
 ```
 
-Edit `conf/hbase-env.sh` to set `JAVA_HOME` for the cluster. For Mac users it would be
+Edit `conf/hbase-env.sh` to set `JAVA_HOME` for the cluster. For Mac users it
+would be
 
 ```
 export JAVA_HOME=`/usr/libexec/java_home -v 1.7`
 ```
 
-Now you may start HBase.
+<%= partial 'shared/install/dependent_services' %>
 
-```
-$ bin/start-hbase.sh
-starting master, logging to /home/abc/<%= data.versions.hbase_basename %>-<%= data.versions.hbase_dir_suffix %>/bin/../logs/hbase-abc-master-yourhost.local.out
-```
-
-Note that even though the command returns immediately, you may have to wait for
-up to a minute before all the initialization is done. If you want to be
-absolutely safe, check your HBase log (replace `.out` from the filename shown
-after `bin/start-hbase.sh` with `.log`) and look for something similar to the
-following.
-
-```
-2014-11-20 15:37:32,359 INFO  [M:0;10.0.27.242:52547] master.HMaster: Master has completed initialization
-```
-
-With this, you can confidently run the Event Server successfully.
-
-At any time, you can run `$ pio status` to check the status of the dependencies.
-
-Now you have installed everything you need to run PredictionIO!
+Now you have installed everything you need!
 
 #### [Next: Recommendation Engine Quick Start](/templates/recommendation/quickstart/)

@@ -1,4 +1,4 @@
-// Copyright 2014 TappingStone, Inc.
+// Copyright 2015 TappingStone, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,7 +18,7 @@ import UnidocKeys._
 
 name := "pio"
 
-version in ThisBuild := "0.8.7-SNAPSHOT"
+version in ThisBuild := "0.9.1-SNAPSHOT"
 
 organization in ThisBuild := "io.prediction"
 
@@ -30,7 +30,7 @@ scalacOptions in (ThisBuild, Test) ++= Seq("-Yrangepos")
 
 fork in (ThisBuild, run) := true
 
-javacOptions in ThisBuild ++= Seq("-source", "1.7", "-target", "1.7",
+javacOptions in (ThisBuild, compile) ++= Seq("-source", "1.7", "-target", "1.7",
   "-Xlint:deprecation", "-Xlint:unchecked")
 
 elasticsearchVersion in ThisBuild := "1.3.2"
@@ -52,28 +52,27 @@ lazy val pioBuildInfoSettings = buildInfoSettings ++ Seq(
 lazy val conf = file(".") / "conf"
 
 lazy val root = project in file(".") aggregate(
+  common,
   core,
   data,
-  engines,
   tools,
   e2)
 
+lazy val common = (project in file("common")).
+  settings(sonatypeSettings: _*).
+  settings(unmanagedClasspath in Test += conf)
+
 lazy val core = (project in file("core")).
   dependsOn(data).
-  settings(genjavadocSettings: _*).
+  //settings(genjavadocSettings: _*).
   settings(pioBuildInfoSettings: _*).
   settings(sonatypeSettings: _*).
   enablePlugins(SbtTwirl).
   settings(unmanagedClasspath in Test += conf)
 
 lazy val data = (project in file("data")).
+  dependsOn(common).
   settings(sonatypeSettings: _*).
-  settings(unmanagedClasspath in Test += conf)
-
-lazy val engines = (project in file("engines")).
-  dependsOn(core).
-  settings(sonatypeSettings: _*).
-  enablePlugins(SbtTwirl).
   settings(unmanagedClasspath in Test += conf)
 
 lazy val tools = (project in file("tools")).
@@ -82,16 +81,20 @@ lazy val tools = (project in file("tools")).
   enablePlugins(SbtTwirl).
   settings(unmanagedClasspath in Test += conf)
 
-lazy val e2 = (project in file("e2")).settings(sonatypeSettings: _*).
+lazy val e2 = (project in file("e2")).
+  settings(sonatypeSettings: _*).
   settings(unmanagedClasspath in Test += conf)
 
-scalaJavaUnidocSettings
+//scalaJavaUnidocSettings
+scalaUnidocSettings
 
+/*
 unidocAllSources in (JavaUnidoc, unidoc) := {
   (unidocAllSources in (JavaUnidoc, unidoc)).value
     .map(_.filterNot(_.getName.contains("$")))
     .map(_.filterNot(_.getCanonicalPath.contains("engines")))
 }
+*/
 
 scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
   "-groups",
@@ -100,6 +103,7 @@ scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
     "akka",
     "breeze",
     "html",
+    "io.prediction.annotation",
     "io.prediction.controller.java",
     "io.prediction.core",
     "io.prediction.data.api",
@@ -116,12 +120,13 @@ scalacOptions in (ScalaUnidoc, unidoc) ++= Seq(
     "io.prediction.tools",
     "org").mkString(":"),
   "-doc-title",
-  "PredictionIO ScalaDoc",
+  "PredictionIO Scaladoc",
   "-doc-version",
   version.value,
   "-doc-root-content",
   "docs/scaladoc/rootdoc.txt")
 
+/*
 javacOptions in (JavaUnidoc, unidoc) := Seq(
   "-windowtitle",
   "PredictionIO Javadoc " + version.value,
@@ -132,6 +137,21 @@ javacOptions in (JavaUnidoc, unidoc) := Seq(
   "docs/javadoc/javadoc-overview.html",
   "-noqualifier",
   "java.lang")
+*/
+
+lazy val pioUnidoc = taskKey[Unit]("Builds PredictionIO Scaladoc and Javadoc")
+
+pioUnidoc := {
+  (unidoc in Compile).value
+  val log = streams.value.log
+  log.info("Adding custom styling.")
+  IO.append(
+    crossTarget.value / "unidoc" / "lib" / "template.css",
+    IO.read(baseDirectory.value / "docs" / "scaladoc" / "api-docs.css"))
+  IO.append(
+    crossTarget.value / "unidoc" / "lib" / "template.js",
+    IO.read(baseDirectory.value / "docs" / "scaladoc" / "api-docs.js"))
+}
 
 pomExtra in ThisBuild := {
   <url>http://prediction.io</url>

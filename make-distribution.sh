@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Copyright 2014 TappingStone, Inc.
+# Copyright 2015 TappingStone, Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,13 +24,12 @@ VERSION=$(grep version $FWDIR/build.sbt | grep ThisBuild | grep -o '".*"' | sed 
 echo "Building binary distribution for PredictionIO $VERSION..."
 
 cd $FWDIR
-sbt/sbt core/publishLocal data/publishLocal e2/publishLocal tools/assembly
+sbt/sbt common/publishLocal core/publishLocal data/publishLocal e2/publishLocal tools/assembly
 
 cd $FWDIR
 rm -rf $DISTDIR
 mkdir -p $DISTDIR/bin
 mkdir -p $DISTDIR/conf
-mkdir -p $DISTDIR/examples
 mkdir -p $DISTDIR/lib
 mkdir -p $DISTDIR/project
 mkdir -p $DISTDIR/sbt
@@ -41,7 +40,6 @@ cp $FWDIR/project/build.properties $DISTDIR/project
 cp $FWDIR/sbt/sbt $DISTDIR/sbt
 cp $FWDIR/sbt/sbt-launch-lib.bash $DISTDIR/sbt
 cp $FWDIR/assembly/*assembly*jar $DISTDIR/lib
-cp -r $FWDIR/examples/scala* $DISTDIR/examples
 
 rm -f $DISTDIR/lib/*javadoc.jar
 rm -f $DISTDIR/lib/*sources.jar
